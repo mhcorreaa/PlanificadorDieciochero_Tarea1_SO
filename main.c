@@ -6,28 +6,48 @@
 #include <signal.h> // ctrl + c seremi
 #include "lector.h"
 #include <string.h>
+#include <time.h>
+#include <sys/resource.h> // libreria que permite pedir mas memoria para tuberias en caso de ejecucion de 10000 acts
 
+struct Actividad actividadesTotales[10000]; // arreglo de actividades, global para que la funcion de la seremi tenga acceso
+int nroActividades = 0;
 
-int revisarDependencias(struct Actividad *actividadesTotales, int id, int nroActividades, int *contadorActReady){  //revisa si puede ser ejecutada dicha actividad
+void cayoLaSeremi(int sig){
 
-    char **cDependencias = actividadesTotales[id].depend;
-    int limite = actividadesTotales[id].num_depend;
+    for(int i=0; i<nroActividades; i++){
+
+        if(actividadesTotales[i].estado == RUNNING){ //solo mata a los que se estaban ejecutando, no a los ready ni los que no existian aun
+
+            kill(actividadesTotales[i].PID, SIGKILL);
+            actividadesTotales[i].estado = -1;
+        }
+        else if(actividadesTotales[i].estado == WAITING) actividadesTotales[i].estado = -1;
+    }
+
+    printf("Llego la Seremi, Todas las tareas en ejecucion han sido abortadas");
+    exit(0);
+}
+
+int revisarDependencias(struct Actividad *actividadesTotalesMain, int id, int nroActividadesMain, int *contadorActReady){ //revisa si puede ser ejecutada dicha actividad
+
+    char **cDependencias = actividadesTotalesMain[id].depend;
+    int limite = actividadesTotalesMain[id].num_depend;
 
     for(int i=0; i<limite; i++){
 
         char *idDependencia = cDependencias[i]; 
 
-        for(int j=0; j<nroActividades; j++){
+        for(int j=0; j<nroActividadesMain; j++){
 
-            if(strcmp(idDependencia, actividadesTotales[j].ID_Actividad) == 0 && actividadesTotales[j].estado == FAILED){ 
+            if(strcmp(idDependencia, actividadesTotalesMain[j].ID_Actividad) == 0 && actividadesTotalesMain[j].estado == FAILED){ 
 
-                actividadesTotales[j].estado = FAILED;  //si su dependencia fallo, pasa a failed tmb
-                contadorActReady++;
+                actividadesTotalesMain[j].estado = FAILED;  //si su dependencia fallo, pasa a failed tmb
+                (*contadorActReady)++;
                 return 0;
             }
 
-            if(strcmp(idDependencia, actividadesTotales[j].ID_Actividad) == 0 && actividadesTotales[j].estado != READY) return 0;
-            
+            if(strcmp(idDependencia, actividadesTotalesMain[j].ID_Actividad) == 0 && actividadesTotalesMain[j].estado != READY) return 0;
+
         }
     }
 
@@ -36,15 +56,21 @@ int revisarDependencias(struct Actividad *actividadesTotales, int id, int nroAct
 
 int main(int argc, char *argv[]){
 
+    srand(time(NULL));
+
+    signal(SIGINT, cayoLaSeremi); // instruccion asincrona ctrl + c
+
+    struct rlimit limite_pipes;
+    limite_pipes.rlim_cur = 20000; // Limite actual que usara el programa
+    limite_pipes.rlim_max = 20000; // Limite maximo absoluto
+    setrlimit(RLIMIT_NOFILE, &limite_pipes);
+
     if(argc != 3){
         printf("Ejecucion incorrecta\n"); //revisa que la invocacion sea con el nro de argumentos correctos
         return -1;
     }
 
     int k = atoi(argv[2]);
-
-    struct Actividad actividadesTotales[10000]; // arreglo de actividades
-    int nroActividades = 0;
 
     if(procesar_archivo(argv[1], actividadesTotales, &nroActividades) == -1){ //se lee plan.txt en lector.c para guardar la lista de actividades
         return -1;
@@ -73,7 +99,7 @@ int main(int argc, char *argv[]){
 
                     if(pid == 0){ 
                         
-                        char buffer[10];
+                        char buffer[15];
                         char mensaje[] = "Listo Brother";
 
                         for(int d = 0; d < actividadesTotales[i].num_depend; d++){ //lee el mensaje del pipe que le dejo cada dependencia

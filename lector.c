@@ -1,5 +1,5 @@
 #define _DEFAULT_SOURCE
-#define _POSIX_C_SOURCE 200809L //habilita funciones posix que no estan en c17
+#define _POSIX_C_SOURCE 200809L //habilita funciones posix que no estan en c17, como strsep
 
 #include <stdio.h> // i/o
 #include <stdlib.h> // malloc  
@@ -61,6 +61,7 @@ int procesar_archivo(char *nombre_archivo, struct Actividad *actividadesTotales,
         actividad.estado = WAITING;
         actividad.tiempo_ms = time;
         actividad.num_depend = num_deps;
+        actividad.cantidad_dependientes = 0;
         
         actividad.depend = malloc(num_deps * sizeof(char *)); // se le asigna memoria con malloc a depend
         
@@ -72,26 +73,28 @@ int procesar_archivo(char *nombre_archivo, struct Actividad *actividadesTotales,
         actividad.Nombre_Actividad = strdup(nombreAct);
 
         actividadesTotales[*nroActividades] = actividad;
-        (*nroActividades)++;                                            // Se desreferencia el puntero para sumarle 1 a la variable original
+        (*nroActividades)++;    
 
-        for(int i = 0; i < *nroActividades; i++){                       //registrar nro de actividades dependientes
+        
+    }
+
+    for(int i = 0; i < *nroActividades; i++){                       //registrar nro de actividades dependientes
             
-            for(int d = 0; d < actividadesTotales[i].num_depend; d++){      
+        for(int d = 0; d < actividadesTotales[i].num_depend; d++){      
                 
-                char *nombre_dep = actividadesTotales[i].depend[d];     //se posiciona en cada dependencia de la act i
+            char *nombre_dep = actividadesTotales[i].depend[d];     //se posiciona en cada dependencia de la act i
 
-                for(int j = 0; j < *nroActividades; j++){       
+            for(int j = 0; j < *nroActividades; j++){       
 
-                    if(strcmp(actividadesTotales[j].ID_Actividad, nombre_dep) == 0){    //busca la coincidencia
+                if(strcmp(actividadesTotales[j].ID_Actividad, nombre_dep) == 0){    //busca la coincidencia
 
-                        actividadesTotales[j].cantidad_dependientes++;
-                        break; 
-                    }
+                    actividadesTotales[j].cantidad_dependientes++;
+                    break; 
                 }
             }
         }
     }
-
+    
     fclose(read);
     return 0;
 }
