@@ -12,6 +12,7 @@ struct Actividad{
     char **depend;
     int num_depend; //para saber tamano de depend
     int estado;
+    pid_t PID;
 };
 
 int procesar_archivo(char *nombre_archivo, struct Actividad *actividadesTotales, int *nroActividades);
