@@ -72,7 +72,24 @@ int procesar_archivo(char *nombre_archivo, struct Actividad *actividadesTotales,
         actividad.Nombre_Actividad = strdup(nombreAct);
 
         actividadesTotales[*nroActividades] = actividad;
-        (*nroActividades)++; // Se desreferencia el puntero para sumarle 1 a la variable original
+        (*nroActividades)++;                                            // Se desreferencia el puntero para sumarle 1 a la variable original
+
+        for(int i = 0; i < *nroActividades; i++){                       //registrar nro de actividades dependientes
+            
+            for(int d = 0; d < actividadesTotales[i].num_depend; d++){      
+                
+                char *nombre_dep = actividadesTotales[i].depend[d];     //se posiciona en cada dependencia de la act i
+
+                for(int j = 0; j < *nroActividades; j++){       
+
+                    if(strcmp(actividadesTotales[j].ID_Actividad, nombre_dep) == 0){    //busca la coincidencia
+
+                        actividadesTotales[j].cantidad_dependientes++;
+                        break; 
+                    }
+                }
+            }
+        }
     }
 
     fclose(read);
