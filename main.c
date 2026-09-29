@@ -1,3 +1,5 @@
+#define _DEFAULT_SOURCE
+#define _POSIX_C_SOURCE 200809L
 #include <stdio.h> // i/o
 #include <stdlib.h> // malloc  
 #include <unistd.h> // syscalls
@@ -14,6 +16,8 @@ int nroActividades = 0;
 
 void cayoLaSeremi(int sig){
 
+    (void)sig;
+
     for(int i=0; i<nroActividades; i++){
 
         if(actividadesTotales[i].estado == RUNNING){ //solo mata a los que se estaban ejecutando, no a los ready ni los que no existian aun
@@ -24,7 +28,7 @@ void cayoLaSeremi(int sig){
         else if(actividadesTotales[i].estado == WAITING) actividadesTotales[i].estado = -1;
     }
 
-    printf("Llego la Seremi, Todas las tareas en ejecucion han sido abortadas");
+    printf("Llego la Seremi, Todas las tareas en ejecucion han sido abortadas\n");
     exit(0);
 }
 
@@ -41,7 +45,8 @@ int revisarDependencias(struct Actividad *actividadesTotalesMain, int id, int nr
 
             if(strcmp(idDependencia, actividadesTotalesMain[j].ID_Actividad) == 0 && actividadesTotalesMain[j].estado == FAILED){ 
 
-                actividadesTotalesMain[j].estado = FAILED;  //si su dependencia fallo, pasa a failed tmb
+                actividadesTotalesMain[id].estado = FAILED;  //si su dependencia fallo, pasa a failed tmb
+                printf("Actividad ID: %s CANCELADA. (Dependencia %s fallo)\n", actividadesTotalesMain[id].ID_Actividad, idDependencia);
                 (*contadorActReady)++;
                 return 0;
             }
@@ -87,9 +92,6 @@ int main(int argc, char *argv[]){
 
                 if(revisarDependencias(actividadesTotales, i, nroActividades, &contadorActReady)){ // revisa si todas sus dependencias estan listas, o si no tiene
 
-                    printf("Iniciando actividad ID: %s\n", actividadesTotales[i].ID_Actividad);
-                    printf("Accion:  %s\n\n", actividadesTotales[i].Nombre_Actividad);
-
                     actividadesTotales[i].estado = RUNNING;
                     contadorActRunning++;
 
@@ -99,6 +101,9 @@ int main(int argc, char *argv[]){
 
                     if(pid == 0){ 
                         
+                        printf("Actividad ID: %s iniciada (PID: %d).\n", actividadesTotales[i].ID_Actividad, getpid());
+                        printf("Accion: %s\n\n", actividadesTotales[i].Nombre_Actividad);
+
                         char buffer[15];
                         char mensaje[] = "Listo Brother";
 
@@ -111,6 +116,7 @@ int main(int argc, char *argv[]){
                                 if(strcmp(id_buscado, actividadesTotales[j].ID_Actividad) == 0){
                                     
                                     read(actividadesTotales[j].fd[0], buffer, sizeof(mensaje));
+                                    printf("[PIPE-READ] Actividad ID: %s leyo el Listo Brother de su dependencia %s.\n", actividadesTotales[i].ID_Actividad, id_buscado);
                                     break; 
                                 }
                             }
@@ -121,6 +127,11 @@ int main(int argc, char *argv[]){
                         for(int j = 0; j < actividadesTotales[i].cantidad_dependientes; j++){ //le deja el mensaje a sus dependientes
                             
                             write(actividadesTotales[i].fd[1], mensaje, sizeof(mensaje));
+                        }
+
+                        if(actividadesTotales[i].cantidad_dependientes > 0){
+                            printf("[PIPE-WRITE] Actividad ID: %s dejo su mensaje listo para %d dependientes.\n", actividadesTotales[i].ID_Actividad, 
+                                actividadesTotales[i].cantidad_dependientes);
                         }
 
                         close(actividadesTotales[i].fd[1]); 
@@ -148,9 +159,17 @@ int main(int argc, char *argv[]){
                         
                         int exit_code = WEXITSTATUS(status);
                         
-                        if(exit_code == 0) actividadesTotales[i].estado = READY; 
+                        if(exit_code == 0){
+
+                         actividadesTotales[i].estado = READY;
+                         printf("Actividad ID: %s terminada con exito.\n", actividadesTotales[i].ID_Actividad);
+                        }
                                
-                        else actividadesTotales[i].estado = FAILED;    
+                        else{
+
+                            actividadesTotales[i].estado = FAILED; 
+                            printf("ERROR: Actividad ID: %s ha fallado.\n", actividadesTotales[i].ID_Actividad);
+                        }   
                     }
                     
                     contadorActRunning--;

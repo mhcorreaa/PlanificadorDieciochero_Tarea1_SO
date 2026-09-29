@@ -23,6 +23,11 @@ int procesar_archivo(char *nombre_archivo, struct Actividad *actividadesTotales,
         char *salto = ":"; 
         
         char *id = strsep(&linea, salto);
+
+        if(id != NULL && id[strlen(id) - 1] == ' '){ //elimina el posible espacio luego del id
+            id[strlen(id) - 1] = '\0';
+        }
+
         char *nombreAct = strsep(&linea, salto);
         char *tiempoToken = strsep(&linea, salto);
         char *depend = strsep(&linea, salto); 
@@ -96,5 +101,6 @@ int procesar_archivo(char *nombre_archivo, struct Actividad *actividadesTotales,
     }
     
     fclose(read);
+    printf("Archivo procesado. Total actividades cargadas: %d\n", *nroActividades);
     return 0;
 }
