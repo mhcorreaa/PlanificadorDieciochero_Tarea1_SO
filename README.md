@@ -20,7 +20,6 @@ El programa requiere la ruta del archivo de texto con la planificación y el lí
 ./planificador plan.txt <k>
 ```
 ## 2. Dependencias
-El sistema fue desarrollado priorizando el uso de librerías nativas de sistemas UNIX/Linux para garantizar un acceso de bajo nivel a los recursos del sistema operativo.
 
 ### 2.1 Macros de configuración
 
